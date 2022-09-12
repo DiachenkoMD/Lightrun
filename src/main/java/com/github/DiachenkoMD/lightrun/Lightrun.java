@@ -3,18 +3,18 @@ package com.github.DiachenkoMD.lightrun;
 import com.github.DiachenkoMD.lightrun.annotations.Benchmark;
 import com.github.DiachenkoMD.lightrun.annotations.DataSource;
 import com.github.DiachenkoMD.lightrun.annotations.Unit;
+import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class Lightrun {
-    public static BenchmarkResults measure(Class<?> benchmarkClazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public static <T> BenchmarkResults<T> measure(@NotNull Class<T> benchmarkClazz) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         // Getting benchmark annotation to acquire detailed info
         Benchmark benchmarkAnno = benchmarkClazz.getAnnotation(Benchmark.class);
 
@@ -23,7 +23,7 @@ public class Lightrun {
             throw new IllegalArgumentException("Measure can only accept annotated @Benchmark classes!");
 
         // Forming benchmark results container, setting columns and creating new benchmarked class instance to invoke methods further
-        BenchmarkResults resultsContainer = new BenchmarkResults();
+        BenchmarkResults<T> resultsContainer = new BenchmarkResults<>();
 
         resultsContainer.setUID(benchmarkAnno.value());
 
@@ -44,7 +44,9 @@ public class Lightrun {
         warmupBenchmark(benchmarkClazz, unitMethods);
 
         // Issuing real benchmarking
-        Object benchmarkClass = benchmarkClazz.getConstructor().newInstance();
+        T benchmarkClass = (T) benchmarkClazz.getConstructor().newInstance();
+
+        resultsContainer.setOrigin(benchmarkClass);
 
         unitMethods.forEach(
             method -> {
@@ -101,6 +103,7 @@ public class Lightrun {
                 }
             }
         );
+
 
         return resultsContainer;
     }

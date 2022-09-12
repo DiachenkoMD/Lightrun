@@ -1,5 +1,6 @@
 package com.github.DiachenkoMD.lightrun;
 
+import com.github.DiachenkoMD.lightrun.annotations.Order;
 import lombok.Data;
 
 import java.lang.reflect.Method;
@@ -23,6 +24,16 @@ public class BenchmarkUnitResult {
         Optional<Order> order = Optional.ofNullable(originMethod.getAnnotation(Order.class));
 
         return order.isPresent() ? order.get().value() : null;
+    }
+
+    public Object getResult(){
+        if(result != null)
+            return result;
+
+        if(unitMethodReturnType == void.class)
+            return "void";
+
+        return "";
     }
 
     @Override

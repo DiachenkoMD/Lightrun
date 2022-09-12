@@ -3,6 +3,7 @@ package com.github.DiachenkoMD.lightrun;
 import lombok.Data;
 
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Data
 public class Arguments {

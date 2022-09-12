@@ -4,13 +4,19 @@ import lombok.Data;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class Table {
+    private String name;
     private final List<ColumnConfig> columnsSettings = new LinkedList<>();
-    private final List<BenchmarkUnitResult> data = new LinkedList<>();
+    private List<BenchmarkUnitResult> data = new LinkedList<>();
 
+    private boolean shouldBeGrouped = false;
     @Override
     public String toString(){
         // Getting columns sizes
@@ -27,7 +33,7 @@ public class Table {
         int headerSize = headerRow.length();
 
         // Rendering table name
-        tableOutput.append("#TABLE").append("\n");
+        tableOutput.append(name).append("\n");
         // Rendering header row top border
         tableOutput.append("-".repeat(headerSize)).append("\n");
 
@@ -36,6 +42,17 @@ public class Table {
 
         // Rendering header row bottom border
         tableOutput.append("-".repeat(headerSize)).append("\n");
+
+        // Grouping data by method
+        if(shouldBeGrouped) {
+            this.data = this.data
+                    .stream()
+                    .collect(Collectors.groupingBy(BenchmarkUnitResult::getOriginMethod))
+                    .values()
+                    .parallelStream()
+                    .map(x -> x.stream().collect(new UnitGroupCollector()))
+                    .collect(Collectors.toList());
+        }
 
         // Rendering table body
         tableOutput
@@ -58,7 +75,9 @@ public class Table {
                                             return joiner.toString();
                                         }
                                 ).collect(Collectors.joining("\n"))
-                );
+                ).append("\n");
+
+        tableOutput.append("-".repeat(headerSize));
 
         return tableOutput.toString();
     }
@@ -120,6 +139,14 @@ public class Table {
         this.data.addAll(results);
     }
 
+    public void setGrouping(boolean isGroupingOn){
+        this.shouldBeGrouped = isGroupingOn;
+    }
+
+    public void setName(String name){
+        this.name = name;
+    }
+
     @Data
     private static class ColumnConfig{
         private static int lastId = 0;
@@ -133,5 +160,41 @@ public class Table {
         String name;
         Function<BenchmarkUnitResult, ?> function;
         int size;
+    }
+
+    private static class UnitGroupCollector implements Collector<BenchmarkUnitResult, BenchmarkGroupResult, BenchmarkGroupResult>{
+        @Override
+        public Supplier<BenchmarkGroupResult> supplier() {
+            return BenchmarkGroupResult::new;
+        }
+
+        @Override
+        public BiConsumer<BenchmarkGroupResult, BenchmarkUnitResult> accumulator() {
+            return (group, unitResult) -> {
+                if (group.getOriginMethod() == null)
+                    group.setOriginMethod(unitResult.getOriginMethod());
+
+                if (group.getName() == null)
+                    group.setName(unitResult.getName());
+
+                group.addUnit(unitResult);
+                group.setNanos(group.getTime().getNanos() + unitResult.getTime().getNanos());
+            };
+        }
+
+        @Override
+        public BinaryOperator<BenchmarkGroupResult> combiner() {
+            return null;
+        }
+
+        @Override
+        public Function<BenchmarkGroupResult, BenchmarkGroupResult> finisher() {
+            return x -> x;
+        }
+
+        @Override
+        public Set<Characteristics> characteristics() {
+            return Set.of(Characteristics.UNORDERED);
+        }
     }
 }

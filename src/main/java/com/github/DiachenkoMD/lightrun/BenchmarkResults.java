@@ -6,10 +6,12 @@ import java.util.*;
 import java.util.function.Function;
 
 @Data
-public class BenchmarkResults {
+public class BenchmarkResults<T> {
     String UID;
     Map<BenchmarkOutputColumn, String> activeColumns;
     List<BenchmarkUnitResult> results;
+
+    T origin;
 
     public boolean addResult(BenchmarkUnitResult res){
         if(results == null)
@@ -27,6 +29,8 @@ public class BenchmarkResults {
 
     public Table asTable(){
         Table table = new Table();
+
+        table.setName(getUID());
 
         for(Map.Entry<BenchmarkOutputColumn, String> entry : activeColumns.entrySet()){
             Function<BenchmarkUnitResult, ?> func = null;
