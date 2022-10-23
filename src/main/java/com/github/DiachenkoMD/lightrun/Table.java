@@ -15,8 +15,14 @@ public class Table {
     private String name;
     private final List<ColumnConfig> columnsSettings = new LinkedList<>();
     private List<BenchmarkUnitResult> data = new LinkedList<>();
-
     private boolean shouldBeGrouped = false;
+
+    private Comparator<BenchmarkUnitResult> orderBy;
+
+    public Table(){
+        setOrderBy(null);
+    }
+
     @Override
     public String toString(){
         // Getting columns sizes
@@ -60,13 +66,16 @@ public class Table {
                         data
                                 .stream()
                                 .sorted(
-                                        (br_1, br_2) ->
-                                                (br_1.getOrder() != null && br_2.getOrder() != null)
-                                                        ?
-                                                        br_1.getOrder()- br_2.getOrder()
-                                                        :
-                                                        (int) (br_1.getTime().getTicks() - br_2.getTime().getTicks())
-                                ).map(
+                                        ((Comparator<BenchmarkUnitResult>) (o1, o2) -> {
+                                            if (o1.getOrder() != null && o2.getOrder() != null) {
+                                                return o1.getOrder() - o2.getOrder();
+                                            } else {
+                                                return 0;
+                                            }
+                                        })
+                                        .thenComparing(orderBy)
+                                )
+                                .map(
                                         benchmarkResult -> {
                                             StringJoiner joiner = new StringJoiner("| ");
 
@@ -145,6 +154,10 @@ public class Table {
 
     public void setName(String name){
         this.name = name;
+    }
+
+    public void setOrderBy(Comparator<BenchmarkUnitResult> comparator){
+        this.orderBy = Objects.requireNonNullElseGet(comparator, () -> (o1, o2) -> (int) (o1.getTime().getTicks() - o2.getTime().getTicks()));
     }
 
     @Data
